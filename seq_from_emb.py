@@ -10,6 +10,7 @@ import numpy as np
 from numpy import linalg
 from subprocess import *
 from random import choice
+from collections import Counter
 
 
 class sl_kernel:
@@ -60,7 +61,7 @@ class sl_kernel:
 
         self.data_embedding = np.array(embedding_arr)
         self.data_fit = np.array(fit_arr)
-        good_points = np.where(self.data_fit > 0.1)
+        good_points = np.where(self.data_fit > -0.5)
         self.data_embedding = self.data_embedding[good_points]
         row_mods = np.sqrt((self.data_embedding * self.data_embedding).sum(axis=1))
         self.data_embedding = self.data_embedding / row_mods[:, np.newaxis]
@@ -79,7 +80,7 @@ class sl_kernel:
                 self.embeddings.append(emb[:-1])
 
     def choose_passes(self):
-        self.from_hist_seq(hist_len=2)
+        self.from_hist_seq(hist_len=3)
 
     def weighted_sum_dists(self):
         test_embedding = np.array(self.embeddings)
@@ -111,7 +112,7 @@ class sl_kernel:
         self.map_emb_on_dataset()
         hist_deep = self.build_freq_seq(hist_len=hist_len)
         hist_shallow = self.build_freq_seq(hist_len=1)
-        final_list = ["ccp"]
+        final_list = [self.list_first]
         pass_seq_len = 100
         for _ in range(pass_seq_len):
             if len(final_list) < hist_len or tuple(final_list[-hist_len:]) not in hist_deep:
@@ -197,26 +198,33 @@ class sl_kernel:
         test_embedding = test_embedding / row_mods[:, np.newaxis]
         dists = self.compute_dists(self.data_embedding, test_embedding)
         min_ind = np.argmin(dists, axis=1)
+        print(f'Total different functions: {len(set(min_ind))}')
+        print(f'Total functions: {len(min_ind)}')
         self.mapped_embeddings = [self.data_embedding[x] for x in min_ind]
         self.mapped_passes = [self.data_passes[x] for x in min_ind]
+        self.mapped_fit = [self.data_fit[x] for x in min_ind]
+        print(self.mapped_fit)
 
     def build_freq_seq(self, hist_len=3):
         split_passes = [
             [y.decode() for y in x if y.decode() != "none_pass"]
             for x in [x.split()[:-5] for x in self.mapped_passes]
         ]
+        data = Counter([x[0] for x in split_passes])
+        self.list_first = data.most_common(1)[0][0]
         hist_table = {}
-        for pass_seq in split_passes:
+        for (i, pass_seq) in enumerate(split_passes):
+            seq_weigth = self.mapped_embeddings[i][6] * self.mapped_fit[i]
             for ind in range(hist_len, len(pass_seq)):
                 hist_piece = tuple(pass_seq[ind - hist_len : ind])
                 if hist_piece in hist_table:
                     if pass_seq[ind] in hist_table[hist_piece]:
-                        hist_table[hist_piece][pass_seq[ind]] += 1
+                        hist_table[hist_piece][pass_seq[ind]] += 1 * seq_weigth
                     else:
-                        hist_table[hist_piece][pass_seq[ind]] = 1
+                        hist_table[hist_piece][pass_seq[ind]] = 1 * seq_weigth
                 else:
                     hist_table[hist_piece] = {}
-                    hist_table[hist_piece][pass_seq[ind]] = 1
+                    hist_table[hist_piece][pass_seq[ind]] = 1 * seq_weigth
         return hist_table
 
 
