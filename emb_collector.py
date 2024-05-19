@@ -1,6 +1,5 @@
 #! /usr/bin/env python3
 import socket
-import pprint
 from time import sleep
 import os
 import argparse
@@ -8,8 +7,6 @@ import struct
 import sys
 import subprocess
 from embedding import *
-import numpy as np
-from numpy import linalg
 
 
 class gcc_wrapper:
@@ -26,12 +23,11 @@ class gcc_wrapper:
             "--plugin", dest="plugin_path", action="store", required=True
         )
         self.parser.add_argument("-g", "--gcc-name", dest="gcc_name", required=True)
-        self.parser.add_argument(
-            "--dataset", action="store", dest="dataset_path", required=True
+        self.parser.add_argument("-o",
+            "--output", action="store", dest="output_path", required=True
         )
 
         self.args = self.parser.parse_args()
-        print("Log message:", "dataset:", self.args.dataset_path)
         self.EMBED_LEN_MULTIPLIER = 200
 
         self.gcc_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM, 0)
@@ -39,7 +35,6 @@ class gcc_wrapper:
         while True:
             try:
                 self.gcc_socket.bind(f"kernel{self.pid}.soc")
-                print("Binding socket is OK:", f"kernel{self.pid}.soc")
             except OSError:
                 sleep(1.5)
                 continue
@@ -83,16 +78,12 @@ class gcc_wrapper:
 
         if len(self.embeddings) == 0:
             return 0
-        pprint.pprint([k for k in self.embeddings.keys()])
+        print("Embeddings calculated for symbols:")
+        print([k for k in self.embeddings.keys()])
 
-        with open(self.args.dataset_path, "ab") as f:
-            print("Log message:", "dataset path is", self.args.dataset_path)
-            for fun_name in self.embeddings:
-                float_emb = [float(x) for x in self.embeddings[fun_name]]
-                float_emb = float_emb + [0xB0BA]
-                encoded = struct.pack("f" * 147 + "i", *float_emb)
-                f.write(encoded)
-                f.flush()
+        if self.args.output_path is not None:
+            print("(TODO) Embeddings will be written into:", self.args.output_path)
+
 
     def get_embedding(self, wait=False):
         timeout = self.gcc_socket.gettimeout()

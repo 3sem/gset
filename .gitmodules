@@ -1,6 +1,3 @@
 [submodule "embedding"]
 	path = embedding
 	url = ../Embed_compute_script
-[submodule "shuffler"]
-	path = shuffler
-	url = ../Reorder_python_link
