@@ -40,8 +40,10 @@ class sl_kernel:
         while True:
             try:
                 self.gcc_socket.bind(f"kernel{self.pid}.soc")
-            except OSError:
+                print("Socket bind is OK")
+            except OSError as e:
                 sleep(1.5)
+		print("OSError while socket binding:", e)
                 continue
             break
         self.gcc_socket.settimeout(30)

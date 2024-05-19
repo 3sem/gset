@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import socket
+import pprint
 from time import sleep
 import os
 import argparse
@@ -30,7 +31,7 @@ class gcc_wrapper:
         )
 
         self.args = self.parser.parse_args()
-
+        print("Log message:", "dataset:", self.args.dataset_path)
         self.EMBED_LEN_MULTIPLIER = 200
 
         self.gcc_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM, 0)
@@ -38,6 +39,7 @@ class gcc_wrapper:
         while True:
             try:
                 self.gcc_socket.bind(f"kernel{self.pid}.soc")
+                print("Binding socket is OK:", f"kernel{self.pid}.soc")
             except OSError:
                 sleep(1.5)
                 continue
@@ -54,7 +56,7 @@ class gcc_wrapper:
 
     def build_and_save(self):
         self.gcc_instance = subprocess.Popen(self.build_string, shell=True)
-
+        print("Log message", "build string:", self.build_string)
         if "-O2" not in self.args.build_args:
             return 0
 
@@ -81,8 +83,10 @@ class gcc_wrapper:
 
         if len(self.embeddings) == 0:
             return 0
+        pprint.pprint([k for k in self.embeddings.keys()])
 
         with open(self.args.dataset_path, "ab") as f:
+            print("Log message:", "dataset path is", self.args.dataset_path)
             for fun_name in self.embeddings:
                 float_emb = [float(x) for x in self.embeddings[fun_name]]
                 float_emb = float_emb + [0xB0BA]
