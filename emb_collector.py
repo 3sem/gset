@@ -121,7 +121,7 @@ class gcc_wrapper:
     def calc_embedding(self, embedding):
         autophase = embedding[:47]
         cfg_len = embedding[47]
-        cfg =  embedding[48: 48 + cfg_len]
+        cfg = embedding[48: 48 + cfg_len]
         val_flow = embedding[48 + cfg_len :]
 
         cfg_embedding = list(get_flow2vec_embed(cfg, 25))
