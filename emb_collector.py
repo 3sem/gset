@@ -1,11 +1,13 @@
 #! /usr/bin/env python3
 import socket
 from time import sleep
+import datetime
 import os
 import argparse
 import struct
 import sys
 import subprocess
+import json
 from embedding import *
 
 
@@ -50,7 +52,7 @@ class gcc_wrapper:
         )
         self.gcc_instance = None  # run build_and_save() to assign compiler instance (as subprocess)
 
-    def build_and_save(self):
+    def build_and_save(self, config: dict):
         self.gcc_instance = subprocess.Popen(self.build_string, shell=True)
         print("Log message", "build string:", self.build_string)
         if "-O2" not in self.args.build_args:
@@ -83,7 +85,22 @@ class gcc_wrapper:
         print([k for k in self.embeddings.keys()])
 
         if self.args.output_path is not None:
-            print("(TODO) Embeddings will be written into:", self.args.output_path)
+            outfile_name = ""
+            try:
+                if "par_dir" in config['outfile_name_body']:
+                    outfile_name += os.path.basename(os.path.normpath(os.getcwd())) + '_'
+                if "par_timestamp" in config['outfile_name_body']:
+                    outfile_name += str(int(round(datetime.now().timestamp())))
+                outfile_name += ".json"
+            except:
+                outfile_name = "output_embeddings.json"
+                print("Default filename will be used for embeddings saving:", outfile_name)
+
+            fullpath = os.path.normpath(self.args.output_path)  + os.sep + outfile_name
+            print("Embeddings will be written to:", fullpath)
+            with open(fullpath, "w+") as outf:
+                json.dump(self.embeddings, outf)
+                outf.flush()
 
     def get_embedding(self, wait=False):
         timeout = self.gcc_socket.gettimeout()
@@ -109,9 +126,13 @@ class gcc_wrapper:
 
 
 if __name__ == "__main__":
+    config = {}
+    with open("config.json") as f:
+        config = json.load(f)
+
     kernel = gcc_wrapper()
     try:
-        kernel.build_and_save()
+        kernel.build_and_save(config)
     except (Exception, SystemExit, KeyboardInterrupt) as e:
         os.unlink(f"kernel{kernel.pid}.soc")
         raise e
