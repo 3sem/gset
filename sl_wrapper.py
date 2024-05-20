@@ -6,8 +6,6 @@ import struct
 import sys
 from embedding import *
 import numpy as np
-from numpy import linalg
-from subprocess import *
 
 
 class sl_kernel:

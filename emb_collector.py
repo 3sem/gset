@@ -48,6 +48,7 @@ class gcc_wrapper:
             f"-fplugin-arg-plugin-socket_postfix={self.pid} "
             f"{self.args.build_args}"
         )
+        self.gcc_instance = None  # run build_and_save() to assign compiler instance (as subprocess)
 
     def build_and_save(self):
         self.gcc_instance = subprocess.Popen(self.build_string, shell=True)
@@ -84,7 +85,6 @@ class gcc_wrapper:
         if self.args.output_path is not None:
             print("(TODO) Embeddings will be written into:", self.args.output_path)
 
-
     def get_embedding(self, wait=False):
         timeout = self.gcc_socket.gettimeout()
         self.gcc_socket.settimeout(None)
@@ -99,7 +99,7 @@ class gcc_wrapper:
     def calc_embedding(self, embedding):
         autophase = embedding[:47]
         cfg_len = embedding[47]
-        cfg = embedding[48 : 48 + cfg_len]
+        cfg =  embedding[48: 48 + cfg_len]
         val_flow = embedding[48 + cfg_len :]
 
         cfg_embedding = list(get_flow2vec_embed(cfg, 25))
