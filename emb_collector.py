@@ -9,6 +9,7 @@ import sys
 import subprocess
 import json
 from embedding import *
+from postprocessor import postprocessor
 
 
 class gcc_wrapper:
@@ -83,7 +84,7 @@ class gcc_wrapper:
             return 0
         print("Embeddings calculated for symbols:")
         print([k for k in self.embeddings.keys()])
-
+        self.args.output_path = os.path.normpath(self.args.output_path)
         if self.args.output_path is not None:
             outfile_name = ""
             try:
@@ -96,11 +97,15 @@ class gcc_wrapper:
                 outfile_name = "output_embeddings.json"
                 print("Default filename will be used for embeddings saving:", outfile_name)
 
-            fullpath = os.path.normpath(self.args.output_path)  + os.sep + outfile_name
+            fullpath = self.args.output_path + os.sep + outfile_name
             print("Embeddings will be written to:", fullpath)
             with open(fullpath, "w+") as outf:
                 json.dump(self.embeddings, outf)
                 outf.flush()
+            print(
+                postprocessor.extract_filenames(os.getcwd(), self.args.build_args)
+            )
+
 
     def get_embedding(self, wait=False):
         timeout = self.gcc_socket.gettimeout()
