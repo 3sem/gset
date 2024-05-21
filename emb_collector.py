@@ -99,8 +99,18 @@ class gcc_wrapper:
 
             fullpath = self.args.output_path + os.sep + outfile_name
             print("Embeddings will be written to:", fullpath)
+            self.postprocessed_dataset = {k: {'embeddings':{'full': v,
+                                                           'counters': v[:47],
+                                                           'cfg': v[47:47+50],
+                                                           'vfg': v[47+50:47+100]},
+                                             'sign': None,
+                                             'location': None,
+                                             'description:': None
+                                             
+                                             } for k,v in self.embeddings.items()}
+            
             with open(fullpath, "w+") as outf:
-                json.dump(self.embeddings, outf)
+                json.dump(self.postprocessed_dataset, outf)
                 outf.flush()
             print(
                 postprocessor.extract_filenames(os.getcwd(), self.args.build_args)

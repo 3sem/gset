@@ -1,19 +1,20 @@
-#include <stdio.h>
+typedef int customtype1;
+typedef double lol;
 
-int m() {
- int t = 5;
-	return t;
+int inc() {
+ int t;
+ return t+1;
 }
 
-int n(float k, float m) {
+customtype1 n(lol k, float m) {
     while (k > 0)
         {
         k-= 1 / m*k;
-        if (k * m > 0.00001) {
-                printf("tr1 %f", (int)m%(int)k);
+        if (k * m > 0.0001) {
+                ;
                 return (int)(k);
             }
         }
-        printf("tr2 %f", k);
+        inc();
         return m*k;
 }
