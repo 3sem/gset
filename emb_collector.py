@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 import socket
 from time import sleep
+from pprint import pprint
 import datetime
 import os
 import argparse
@@ -9,7 +10,7 @@ import sys
 import subprocess
 import json
 from embedding import *
-from src_processing import postprocessor
+from src_processing import postprocessor, preprocessor
 
 
 class gcc_wrapper:
@@ -102,9 +103,16 @@ class gcc_wrapper:
             with open(fullpath, "w+") as outf:
                 json.dump(self.embeddings, outf)
                 outf.flush()
+
             print(
-                postprocessor.extract_filenames(os.getcwd(), self.args.build_args)
+                preprocessor.extract_filenames(os.getcwd(), self.args.build_args)
             )
+            preprocessed_data = preprocessor.evaluate_compiler_preprocessing(self.args.gcc_name, self.args.output_path)
+
+            preprocessed_data = preprocessor.evaluate_compiler_preprocessing(self.args.gcc_name, self.args.output_path,
+                                                                             preprocessor.extract_filenames(os.getcwd(), self.args.build_args))
+
+
 
 
     def get_embedding(self, wait=False):
