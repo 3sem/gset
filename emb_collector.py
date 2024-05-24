@@ -99,19 +99,25 @@ class gcc_wrapper:
                 print("Default filename will be used for embeddings saving:", outfile_name)
 
             fullpath = self.args.output_path + os.sep + outfile_name
+            embeddings = {k:{
+                'cnt':v[:47],
+                'cfg':v[47,47+25],
+                'dfg':v[47+25:],
+                'full':v[:],
+                'sign': None,
+                'code': None,
+                'file': None
+            } for k,v in self.embeddings.items()}
             print("Embeddings will be written to:", fullpath)
             with open(fullpath, "w+") as outf:
-                json.dump(self.embeddings, outf)
+                json.dump(embeddings, outf)
                 outf.flush()
-
-            print(
-                preprocessor.extract_filenames(os.getcwd(), self.args.build_args)
-            )
-            preprocessed_data = preprocessor.evaluate_compiler_preprocessing(self.args.gcc_name, self.args.output_path)
 
             preprocessed_data = preprocessor.evaluate_compiler_preprocessing(self.args.gcc_name, self.args.output_path,
                                                                              preprocessor.extract_filenames(os.getcwd(), self.args.build_args))
 
+            for entry in preprocessed_data:
+                pass
 
 
 
