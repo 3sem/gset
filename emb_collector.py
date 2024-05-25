@@ -117,8 +117,9 @@ class gcc_wrapper:
             for k, entry in preprocessed_data.items():
                 for signature in entry['sign']:
                     embeddings[signature['name']]['sign'] = signature['text_repr']
-                    # TODO: add function code
+                    embeddings[signature['name']]['file'] = signature['code']
                     embeddings[signature['name']]['file'] = k
+
                 pass
 
             print("Embeddings will be written to:", fullpath)

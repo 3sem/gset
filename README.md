@@ -31,3 +31,5 @@ python3 emb_collector.py -b="-O2 test_code/1.c test_code/dir1/2.c" --plugin ./li
 - numpy
 - sklearn
 - argparse
+- pycparser
+- functiondefextractor

@@ -6,8 +6,21 @@ from glob import glob
 
 import subprocess
 from pycparser import c_ast, parse_file, c_parser
+from functiondefextractor import core_extractor
 
 functions = list()
+
+
+def substring_after(s, delim):
+    return s.partition(delim)[2]
+
+
+def substring_before(s, delim):
+    return s.partition(delim)[0]
+
+
+def canonize_string(s):
+    return re.sub(r"[\n\t\s]*", "", s)
 
 
 class FuncSignCollectVisitor(c_ast.NodeVisitor):
@@ -23,6 +36,7 @@ class FuncSignCollectVisitor(c_ast.NodeVisitor):
             'name': func_name,
             'ret_type': func_ret_type,
             'args': func_arguments,
+            'code': None,
             'text_repr': func_ret_type + " " + func_name + '(' + ", ".join(a[0] + a[1] for a in func_arguments) + ');'
         }
         )
@@ -46,6 +60,13 @@ def traversal_func_defs_from_text(text):
 def collect_fun_info(filename):
     functions.clear()
     traversal_func_defs_from_file(filename)
+    func_splitting = core_extractor.extractor(os.path.split(filename)[0]).to_dict()
+    fc = {substring_after(v, ".c_"): func_splitting['Code'][k]
+          for k, v in func_splitting['Uniq ID'].items() if
+          os.path.split(filename)[1].startswith(substring_before(os.path.split(v)[1])) }
+    for i in range(len(functions)):
+        functions[i]['code'] = fc[functions[i]['name']]
+
     return functions
 
 
@@ -103,9 +124,14 @@ def evaluate_compiler_preprocessing(compiler_path, working_dir, whitelist=None, 
         else glob(pathname=os.path.join(working_dir, "**/*.c"), recursive=True)
     processed_names = list()
     processed_data = dict()
-
+    prev_head, _ = os.path.split(checklist[0])
+    func_splitting = core_extractor.extractor(prev_head).to_dict()
     for i, name in enumerate(checklist): # preprocess each file by gcc, remove #, comments, & save
         head, tail = os.path.split(name)
+        if not prev_head == head: # update the information about functions in the dir
+            prev_head = head
+            func_splitting = core_extractor.extractor(prev_head).to_dict()
+
         imm_name = "preprocess_" + tail
         subprocess.run([compiler_path, "-E", name, "-o", os.path.join(head, imm_name)])
         processed_names.append(imm_name)
@@ -129,13 +155,21 @@ def evaluate_compiler_preprocessing(compiler_path, working_dir, whitelist=None, 
             original_text, preprocessed_text = preprocess_text(f)
             functions_def_info = check_from_text(preprocessed_text)
             processed_data[full_path] = {'src': original_text,'sign': functions_def_info}
+
+            fc = {substring_after(v, ".c_"): func_splitting['Code'][k]
+                  for k, v in func_splitting['Uniq ID'].items()}
+
+            for i, item in enumerate(processed_data[full_path]['sign']):
+                processed_data[full_path]['sign'][i]['code'] = fc[item['name']]
+
             if verbose is True:
                 print(f"Iteration {i} ends.\nGet info of {len(processed_data[full_path]['sign'])} functions")
             if os.path.exists(full_path):
                 os.remove(full_path)
-        if verbose is True:
-            print("==RESULTS OF DATA PREPROCESSING:==")
-            pprint(processed_data)
+
+    if verbose is True:
+        print("==RESULTS OF DATA PREPROCESSING:==")
+        pprint(processed_data)
     return processed_data
 
 
