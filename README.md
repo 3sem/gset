@@ -27,6 +27,7 @@ python3 emb_collector.py -b="-O2 test_code/1.c test_code/dir1/2.c" --plugin ./li
 #### Системные зависимости:
 - Python 3 (тестировалось на 3.9)
 - GCC-7 (тестировалось на Trunk GCC-7.5, установленном через apt: 'sudo apt install gcc-7')
+- CTags
 #### Python-пакеты:
 - numpy
 - sklearn

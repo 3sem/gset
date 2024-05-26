@@ -6,9 +6,38 @@ from glob import glob
 
 import subprocess
 from pycparser import c_ast, parse_file, c_parser
-from functiondefextractor import core_extractor
+from src_processing.third_party.defextract import func_defextractor
 
 functions = list()
+
+
+def get_func_body(filename, line_num):
+    """ Function to get method/function body from files
+        @parameters
+        filename, line_num: Path to the file, function/method line number
+        @return
+        This function returns function/method definitions of all the given files"""
+    line_num = int(line_num)
+    code = ""  # pragma: no mutate
+    cnt_braket = 0
+    found_start = False
+    return_val = None
+    with open(filename, "r", encoding='utf-8', errors='ignore') as files:  # pragma: no mutate
+        for i, line in enumerate(files):
+            if i >= (line_num - 1):
+                code += line
+
+                if line.count("{") > 0:
+                    found_start = True
+                    cnt_braket += line.count("{")
+
+                if line.count("}") > 0:
+                    cnt_braket -= line.count("}")
+
+                if cnt_braket == 0 and found_start is True:
+                    return_val = code
+                    break
+    return return_val
 
 
 def substring_after(s, delim):
@@ -60,7 +89,7 @@ def traversal_func_defs_from_text(text):
 def collect_fun_info(filename):
     functions.clear()
     traversal_func_defs_from_file(filename)
-    func_splitting = core_extractor.extractor(os.path.split(filename)[0]).to_dict()
+    func_splitting = func_defextractor(os.path.split(filename)[0]).to_dict()
     fc = {substring_after(v, ".c_"): func_splitting['Code'][k]
           for k, v in func_splitting['Uniq ID'].items() if
           os.path.split(filename)[1].startswith(substring_before(os.path.split(v)[1])) }
@@ -125,12 +154,12 @@ def evaluate_compiler_preprocessing(compiler_path, working_dir, whitelist=None, 
     processed_names = list()
     processed_data = dict()
     prev_head, _ = os.path.split(checklist[0])
-    func_splitting = core_extractor.extractor(prev_head).to_dict()
+    func_splitting = func_defextractor(prev_head).to_dict()
     for i, name in enumerate(checklist): # preprocess each file by gcc, remove #, comments, & save
         head, tail = os.path.split(name)
         if not prev_head == head: # update the information about functions in the dir
             prev_head = head
-            func_splitting = core_extractor.extractor(prev_head).to_dict()
+            func_splitting = func_defextractor(prev_head).to_dict()
 
         imm_name = "preprocess_" + tail
         subprocess.run([compiler_path, "-E", name, "-o", os.path.join(head, imm_name)])
