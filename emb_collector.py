@@ -55,6 +55,9 @@ class gcc_wrapper:
             argline_tail = " ".join(self.args.build_args.split("=")[1].split(" ")[1:])
             self.args.build_args = " ".join(preprocessor.extract_filenames(__dir)) + " " + argline_tail
 
+        else:
+            compiler_args = preprocessor.chdir_build_string(self.args.build_args, self.args.output_path)
+            self.args.build_args = compiler_args
         self.build_string = (
             f"{self.args.gcc_name} -fplugin={self.args.plugin_path} "
             "-fplugin-arg-plugin-collect_embedding "

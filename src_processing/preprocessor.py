@@ -146,6 +146,14 @@ def extract_filenames(base_dir, string=None, delimiters=' |\n|\t'):
     return filenames
 
 
+def chdir_build_string(string, base_dir, delimiters=' |\n|\t'):
+    substrings = [p for p in re.split(delimiters, string)]
+    for i in range(len(substrings)):
+        if substrings[i].endswith(".c"):
+            substrings[i] = os.path.join(base_dir, substrings[i])
+
+    return " ".join(substrings)
+
 def create_benchmark_working_dir(benchmark, working_dir):
     if os.path.exists(working_dir):
         return
