@@ -16,6 +16,7 @@ from src_processing import postprocessor, preprocessor
 class gcc_wrapper:
     def __init__(self):
         self.parser = argparse.ArgumentParser()
+        self.verbose = False
         self.parser.add_argument(
             "-b",
             "--build",
@@ -30,6 +31,8 @@ class gcc_wrapper:
         self.parser.add_argument("-o",
             "--output", action="store", dest="output_path", required=True
         )
+        self.parser.add_argument('-v', '--verbose',
+                            action='store_true')  # on/off flag
 
         self.args = self.parser.parse_args()
         self.EMBED_LEN_MULTIPLIER = 200
@@ -37,6 +40,7 @@ class gcc_wrapper:
 
         self.gcc_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM, 0)
         self.pid = os.getpid()
+
         while True:
             try:
                 self.gcc_socket.bind(f"kernel{self.pid}.soc")
@@ -54,6 +58,12 @@ class gcc_wrapper:
             f"{self.args.build_args}"
         )
         self.gcc_instance = None  # run build_and_save() to assign compiler instance (as subprocess)
+
+    def ifverbose(self, method, args):
+        if self.args.verbose:
+            return method(args)
+        else:
+            return None
 
     def build_and_save(self, config: dict):
         self.gcc_instance = subprocess.Popen(self.build_string, shell=True)
@@ -84,7 +94,8 @@ class gcc_wrapper:
 
         if len(self.embeddings) == 0:
             return 0
-        print("Embeddings calculated for symbols:")
+
+        self.ifverbose(print, "Embeddings calculated for symbols:")
         print([k for k in self.embeddings.keys()])
         self.args.output_path = os.path.normpath(self.args.output_path)
         if self.args.output_path is not None:
@@ -97,8 +108,7 @@ class gcc_wrapper:
                 outfile_name += ".json"
             except:
                 outfile_name = "output_embeddings.json"
-                print("Default filename will be used for embeddings saving:", outfile_name)
-
+                self.ifverbose(print, ("Default filename will be used for embeddings saving:", outfile_name))
             fullpath = self.args.output_path + os.sep + outfile_name
             embeddings = {k: {
                 'cnt': v[:47],
@@ -124,13 +134,11 @@ class gcc_wrapper:
                     embeddings[signature['name']]['file'] = k
                 pass
 
-            pprint(embeddings)
+            self.ifverbose(pprint, embeddings)
             with open(fullpath, "w+") as outf:
                 json.dump(embeddings, outf)
                 outf.flush()
             print("Embeddings are written to:", fullpath)
-
-
 
     def get_embedding(self, wait=False):
         timeout = self.gcc_socket.gettimeout()
