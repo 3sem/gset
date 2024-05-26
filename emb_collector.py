@@ -52,7 +52,7 @@ class gcc_wrapper:
 
         if self.args.build_args.startswith("DIR="):
             __dir = self.args.build_args.split("=")[1].split(" ")[0] # format DIR=/path/to/srs <another args>
-            argline_tail = " ".join(self.args.build_args.split("=")[1].split(" ")[1:])
+            argline_tail = " ".join(self.args.build_args.lstrip("DIR=").split(" ")[1:])
             self.args.build_args = " ".join(preprocessor.extract_filenames(__dir)) + " " + argline_tail
 
         else:
