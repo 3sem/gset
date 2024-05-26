@@ -50,6 +50,11 @@ class gcc_wrapper:
             break
         self.gcc_socket.settimeout(45)
 
+        if self.args.build_args.startswith("DIR="):
+            __dir = self.args.build_args.split("=")[1].split(" ")[0] # format DIR=/path/to/srs <another args>
+            argline_tail = " ".join(self.args.build_args.split("=")[1].split(" ")[1:])
+            self.args.build_args = " ".join(preprocessor.extract_filenames(__dir)) + " " + argline_tail
+
         self.build_string = (
             f"{self.args.gcc_name} -fplugin={self.args.plugin_path} "
             "-fplugin-arg-plugin-collect_embedding "
@@ -57,6 +62,7 @@ class gcc_wrapper:
             f"-fplugin-arg-plugin-socket_postfix={self.pid} "
             f"{self.args.build_args}"
         )
+
         self.gcc_instance = None  # run build_and_save() to assign compiler instance (as subprocess)
 
     def ifverbose(self, method, args):
@@ -67,7 +73,7 @@ class gcc_wrapper:
 
     def build_and_save(self, config: dict):
         self.gcc_instance = subprocess.Popen(self.build_string, shell=True)
-        print("Log message", "build string:", self.build_string)
+        self.ifverbose(print, ("Log message", "build string:", self.build_string))
         if "-O2" not in self.args.build_args:
             return 0
 
@@ -96,7 +102,7 @@ class gcc_wrapper:
             return 0
 
         self.ifverbose(print, "Embeddings calculated for symbols:")
-        print([k for k in self.embeddings.keys()])
+        self.ifverbose(print, [k for k in self.embeddings.keys()])
         self.args.output_path = os.path.normpath(self.args.output_path)
         if self.args.output_path is not None:
             outfile_name = ""
@@ -124,15 +130,15 @@ class gcc_wrapper:
             preprocessed_data = preprocessor.evaluate_compiler_preprocessing(
                 self.args.gcc_name,
                 self.args.output_path,
-                preprocessor.extract_filenames(os.getcwd(), self.args.build_args))
+                preprocessor.extract_filenames(os.getcwd(), self.args.build_args),
+                verbose=self.args.verbose
+            )
 
             for k, entry in preprocessed_data.items():
-
                 for signature in entry['sign']:
                     embeddings[signature['name']]['sign'] = signature['text_repr']
                     embeddings[signature['name']]['code'] = signature['code']
                     embeddings[signature['name']]['file'] = k
-                pass
 
             self.ifverbose(pprint, embeddings)
             with open(fullpath, "w+") as outf:

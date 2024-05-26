@@ -128,14 +128,21 @@ def comment_remover(text):
     return re.sub(pattern, replacer, text)
 
 
-def extract_filenames(directory, string, delimiters=' |\n|\t', pattern=r"*\.c"):
+def extract_filenames(base_dir, string=None, delimiters=' |\n|\t'):
     """
     Extract filenames from benchmark
+    base_dir -- benchmark base directory
+    string -- if str, files enumerated in str, delimited by any of delimiters 'delimiters';
+        else None if each of *.c file should be processed
+    return: list of filenames
     """
     filenames = list()
-    substrings = [p for p in re.split(delimiters, string) if p.endswith(".c")]
-    for s in substrings:
-        filenames += [r for r in glob(directory + os.sep + s)]
+    if string is not None:
+        substrings = [p for p in re.split(delimiters, string) if p.endswith(".c")]
+        for s in substrings:
+            filenames += [r for r in glob(base_dir + os.sep + s)]
+    else:
+        filenames += glob(pathname=os.path.join(os.path.normpath(base_dir) + os.sep, "**/*.c"), recursive=True)
     return filenames
 
 
