@@ -117,18 +117,18 @@ class gcc_wrapper:
                 preprocessor.extract_filenames(os.getcwd(), self.args.build_args))
 
             for k, entry in preprocessed_data.items():
+
                 for signature in entry['sign']:
                     embeddings[signature['name']]['sign'] = signature['text_repr']
-                    embeddings[signature['name']]['file'] = signature['code']
+                    embeddings[signature['name']]['code'] = signature['code']
                     embeddings[signature['name']]['file'] = k
-
                 pass
 
-            print("Embeddings will be written to:", fullpath)
             pprint(embeddings)
             with open(fullpath, "w+") as outf:
                 json.dump(embeddings, outf)
                 outf.flush()
+            print("Embeddings are written to:", fullpath)
 
 
 
