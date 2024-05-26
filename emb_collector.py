@@ -33,6 +33,7 @@ class gcc_wrapper:
 
         self.args = self.parser.parse_args()
         self.EMBED_LEN_MULTIPLIER = 200
+        self.embeddings = {}
 
         self.gcc_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM, 0)
         self.pid = os.getpid()
@@ -99,20 +100,21 @@ class gcc_wrapper:
                 print("Default filename will be used for embeddings saving:", outfile_name)
 
             fullpath = self.args.output_path + os.sep + outfile_name
-            embeddings = {k:{
-                'cnt':v[:47],
-                'cfg':v[47:47+25],
-                'dfg':v[47+25:],
-                'full':v[:],
+            embeddings = {k: {
+                'cnt': v[:47],
+                'cfg': v[47:47+25],
+                'dfg': v[47+25:],
+                'full': v[:],
                 'sign': None,
                 'code': None,
                 'file': None,
                 'desc': None
-            } for k,v in self.embeddings.items()}
+            } for k, v in self.embeddings.items()}
 
-
-            preprocessed_data = preprocessor.evaluate_compiler_preprocessing(self.args.gcc_name, self.args.output_path,
-                                                                             preprocessor.extract_filenames(os.getcwd(), self.args.build_args))
+            preprocessed_data = preprocessor.evaluate_compiler_preprocessing(
+                self.args.gcc_name,
+                self.args.output_path,
+                preprocessor.extract_filenames(os.getcwd(), self.args.build_args))
 
             for k, entry in preprocessed_data.items():
                 for signature in entry['sign']:
