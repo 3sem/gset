@@ -53,7 +53,7 @@ class gcc_wrapper:
         if self.args.build_args.startswith("DIR="):
             __dir = self.args.build_args.split("=")[1].split(" ")[0] # format DIR=/path/to/srs <another args>
             argline_tail = " ".join(self.args.build_args.lstrip("DIR=").split(" ")[1:])
-            self.args.build_args = " ".join(preprocessor.extract_filenames(__dir)) + " " + argline_tail
+            self.args.build_args = " ".join(preprocessor.extract_filenames(__dir)[0]) + " " + argline_tail
 
         else:
             compiler_args = preprocessor.chdir_build_string(self.args.build_args, self.args.output_path)
@@ -77,10 +77,11 @@ class gcc_wrapper:
     def build_and_save(self, config: dict):
         self.gcc_instance = subprocess.Popen(self.build_string, shell=True)
         self.ifverbose(print, ("Log message", "build string:", self.build_string))
-        if "-O2" not in self.args.build_args:
-            return 0
+        #if "-O2" not in self.args.build_args:
+        #    return 0
 
         self.embeddings = {}
+        '''
         while True:
             try:
                 name = self.gcc_socket.recv(4000).decode()
@@ -102,8 +103,10 @@ class gcc_wrapper:
             exit(self.gcc_instance.returncode)
 
         if len(self.embeddings) == 0:
-            return 0
-
+            self.ifverbose(print, ("Log message: Warning!", "Embedding list is empty"))
+            return 
+        '''
+        print([k for k in self.embeddings.keys()])
         self.ifverbose(print, "Embeddings calculated for symbols:")
         self.ifverbose(print, [k for k in self.embeddings.keys()])
         self.args.output_path = os.path.normpath(self.args.output_path)
@@ -119,6 +122,8 @@ class gcc_wrapper:
                 outfile_name = "output_embeddings.json"
                 self.ifverbose(print, ("Default filename will be used for embeddings saving:", outfile_name))
             fullpath = self.args.output_path + os.sep + outfile_name
+            self.ifverbose(print, ("Full path to file for embeddings saving:", fullpath))
+
             embeddings = {k: {
                 'cnt': v[:47],
                 'cfg': v[47:47+25],
@@ -129,7 +134,7 @@ class gcc_wrapper:
                 'file': None,
                 'desc': None
             } for k, v in self.embeddings.items()}
-
+            print("embeddings", embeddings)
             preprocessed_data = preprocessor.evaluate_compiler_preprocessing(
                 self.args.gcc_name,
                 self.args.output_path,

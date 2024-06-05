@@ -131,19 +131,25 @@ def comment_remover(text):
 def extract_filenames(base_dir, string=None, delimiters=' |\n|\t'):
     """
     Extract filenames from benchmark
-    base_dir -- benchmark base directory
-    string -- if str, files enumerated in str, delimited by any of delimiters 'delimiters';
-        else None if each of *.c file should be processed
-    return: list of filenames
+    Arguments:
+        base_dir -- benchmark base directory
+        string -- if str, filenames enumerated in str, separated by any delimiter from 'delimiters';
+            else None if each of *.c file should be processed
+    return:
+        tuple with list of src, list of includes
     """
-    filenames = list()
+    arguments = list()
+    filenames = list() # src to compile
+    includes = list() # include files
     if string is not None:
         substrings = [p for p in re.split(delimiters, string) if p.endswith(".c")]
         for s in substrings:
             filenames += [r for r in glob(base_dir + os.sep + s)]
+        arguments = [p for p in re.split(delimiters, string) if (p.startswith("-") and not p.startswith("-I"))]
     else:
         filenames += glob(pathname=os.path.join(os.path.normpath(base_dir) + os.sep, "**/*.c"), recursive=True)
-    return filenames
+    includes += glob(pathname=os.path.join(os.path.normpath(base_dir) + os.sep, "**/*.h"), recursive=True)
+    return filenames, includes, arguments
 
 
 def chdir_build_string(string, base_dir, delimiters=' |\n|\t'):
@@ -151,6 +157,9 @@ def chdir_build_string(string, base_dir, delimiters=' |\n|\t'):
     for i in range(len(substrings)):
         if substrings[i].endswith(".c"):
             substrings[i] = os.path.join(base_dir, substrings[i])
+        elif substrings[i].startswith("-I"):
+            substrings[i] = "-I" + os.path.join(base_dir, substrings[i].lstrip("-I"))
+
 
     return " ".join(substrings)
 
@@ -164,12 +173,18 @@ def create_benchmark_working_dir(benchmark, working_dir):
 def evaluate_compiler_preprocessing(compiler_path, working_dir, whitelist=None, verbose=True):
     if verbose is True:
         print("Preprocessing starts on:", working_dir, "; Compiler path:", compiler_path)
-    checklist = whitelist if whitelist is not None\
-        else glob(pathname=os.path.join(working_dir, "**/*.c"), recursive=True)
-    processed_names = list()
+    checklist = whitelist[0] if whitelist is not None\
+            else glob(pathname=os.path.join(working_dir, "**/*.c"), recursive=True)
+    includes = whitelist[1] if whitelist is not None\
+            else glob(pathname=os.path.join(working_dir, "**/*.h"), recursive=True)
+    arguments = whitelist[2] if whitelist is not None\
+            else list()
+    arguments = [a for a in arguments if not a.startswith("-o")]
+
     processed_data = dict()
     prev_head, _ = os.path.split(checklist[0])
     func_splitting = func_defextractor(prev_head).to_dict()
+
     for i, name in enumerate(checklist): # preprocess each file by gcc, remove #, comments, & save
         head, tail = os.path.split(name)
         if not prev_head == head: # update the information about functions in the dir
@@ -177,9 +192,14 @@ def evaluate_compiler_preprocessing(compiler_path, working_dir, whitelist=None, 
             func_splitting = func_defextractor(prev_head).to_dict()
 
         imm_name = "preprocess_" + tail
-        subprocess.run([compiler_path, "-E", name, "-o", os.path.join(head, imm_name)])
-        processed_names.append(imm_name)
+        print(f"Run GCC preprocessor on file {name}")
+
+        subprocess.run([compiler_path, "-E", name] + arguments +
+                        list(set(["-I" + os.path.split(incl_)[0] for incl_ in includes])) +
+                        ["-o", os.path.join(head, imm_name)])
+        print(f"End of {name} preprocessing by gcc")
         full_path = os.path.join(head, imm_name)
+        print("FULLPATH", full_path)
         with open(full_path, "r") as f:
             def preprocess_text(f):
                 if verbose is True:
