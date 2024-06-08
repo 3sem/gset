@@ -146,9 +146,10 @@ def extract_filenames(base_dir, string=None, delimiters=' |\n|\t'):
         for s in substrings:
             filenames += [r for r in glob(base_dir + os.sep + s)]
         arguments = [p for p in re.split(delimiters, string) if (p.startswith("-") and not p.startswith("-I"))]
+        includes = [p for p in re.split(delimiters, string) if p.startswith("-I")]
     else:
         filenames += glob(pathname=os.path.join(os.path.normpath(base_dir) + os.sep, "**/*.c"), recursive=True)
-    includes += glob(pathname=os.path.join(os.path.normpath(base_dir) + os.sep, "**/*.h"), recursive=True)
+        includes += glob(pathname=os.path.join(os.path.normpath(base_dir) + os.sep, "**/*.h"), recursive=True)
     return filenames, includes, arguments
 
 
