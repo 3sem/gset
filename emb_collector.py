@@ -81,7 +81,7 @@ class gcc_wrapper:
         #    return 0
 
         self.embeddings = {}
-        '''
+
         while True:
             try:
                 name = self.gcc_socket.recv(4000).decode()
@@ -105,7 +105,7 @@ class gcc_wrapper:
         if len(self.embeddings) == 0:
             self.ifverbose(print, ("Log message: Warning!", "Embedding list is empty"))
             return 
-        '''
+
         print([k for k in self.embeddings.keys()])
         self.ifverbose(print, "Embeddings calculated for symbols:")
         self.ifverbose(print, [k for k in self.embeddings.keys()])
@@ -141,18 +141,25 @@ class gcc_wrapper:
                 preprocessor.extract_filenames(os.getcwd(), self.args.build_args),
                 verbose=self.args.verbose
             )
-
+            fails = 0
             for k, entry in preprocessed_data.items():
                 for signature in entry['sign']:
-                    embeddings[signature['name']]['sign'] = signature['text_repr']
-                    embeddings[signature['name']]['code'] = signature['code']
-                    embeddings[signature['name']]['file'] = k
+                    try:
+                        embeddings[signature['name']]['sign'] = signature['text_repr']
+                        embeddings[signature['name']]['code'] = signature['code']
+                        embeddings[signature['name']]['file'] = k
+                    except:
+                        fails += 1
+                        print(f"Warning: embedding for {signature['name']} is skipped")
 
             self.ifverbose(pprint, embeddings)
             with open(fullpath, "w+") as outf:
                 json.dump(embeddings, outf)
                 outf.flush()
             print("Embeddings are written to:", fullpath)
+            if fails > 0:
+                print(f"Embeddings extraction ended with {len(embeddings)} functions processed and {fails} skipped."
+                      f"Maybe you should add -fno-inline into the build arguments")
 
     def get_embedding(self, wait=False):
         timeout = self.gcc_socket.gettimeout()

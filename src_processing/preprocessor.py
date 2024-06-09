@@ -2,10 +2,8 @@ import shutil
 import re
 import os
 from pprint import pprint
-from glob import glob
 
-import subprocess
-from pycparser import c_ast, parse_file, c_parser
+from glob import glob
 from src_processing.third_party.defextract import func_defextractor
 
 functions = list()
@@ -52,43 +50,8 @@ def canonize_string(s):
     return re.sub(r"[\n\t\s]*", "", s)
 
 
-class FuncSignCollectVisitor(c_ast.NodeVisitor):
-    def visit_FuncDef(self, node):
-        print('%s at %s' % (node.decl.name, node.decl.coord))
-        func_ret_type = node.decl.type.type.type.names[0]
-        func_name = node.decl.name
-        try:
-            func_arguments = [(x.name, x.type.type.names[0]) for x in node.decl.type.args.params]
-        except AttributeError:
-            func_arguments = []
-        functions.append({
-            'name': func_name,
-            'ret_type': func_ret_type,
-            'args': func_arguments,
-            'code': None,
-            'text_repr': func_ret_type + " " + func_name + '(' + ", ".join(a[0] + a[1] for a in func_arguments) + ');'
-        }
-        )
-
-
-def traversal_func_defs_from_file(filename):
-    ast = parse_file(filename, use_cpp=False,
-                     cpp_args=r'-Iutils/fake_libc_include')
-
-    v = FuncSignCollectVisitor()
-    v.visit(ast)
-
-
-def traversal_func_defs_from_text(text):
-    parser = c_parser.CParser()
-    ast = parser.parse(text, filename='<none>')
-    v = FuncSignCollectVisitor()
-    v.visit(ast)
-
-
 def collect_fun_info(filename):
     functions.clear()
-    traversal_func_defs_from_file(filename)
     func_splitting = func_defextractor(os.path.split(filename)[0]).to_dict()
     fc = {substring_after(v, ".c_"): func_splitting['Code'][k]
           for k, v in func_splitting['Uniq ID'].items() if
@@ -107,11 +70,21 @@ def check_from_file(filepath=
     return functions
 
 
-def check_from_text(text="int m() {int i; return i++;} int main() {return m();}"):
-    functions.clear()
-    traversal_func_defs_from_text(text)
-    print(functions)
-    return functions
+def check_from_text(func_splitting):
+    fc = {substring_after(v, ".c_"):
+              (func_splitting['Code'][k], {
+               'name': substring_after(v, ".c_"),
+               'ret_type':
+                   substring_before(func_splitting['Code'][k].split('{')[0],
+                                    substring_after(v, ".c_")),
+               'args':
+                   substring_after(func_splitting['Code'][k].split('{')[0],
+                                   substring_after(v, ".c_")).split('(')[-1].split(')')[0],
+               'code': None,  # code will be filled on the next steps
+               'text_repr': func_splitting['Code'][k].split('{')[0] + ";"
+               })
+          for k, v in func_splitting['Uniq ID'].items()}
+    return fc
 
 
 def comment_remover(text):
@@ -160,9 +133,8 @@ def chdir_build_string(string, base_dir, delimiters=' |\n|\t'):
             substrings[i] = os.path.join(base_dir, substrings[i])
         elif substrings[i].startswith("-I"):
             substrings[i] = "-I" + os.path.join(base_dir, substrings[i].lstrip("-I"))
-
-
     return " ".join(substrings)
+
 
 def create_benchmark_working_dir(benchmark, working_dir):
     if os.path.exists(working_dir):
@@ -177,7 +149,7 @@ def evaluate_compiler_preprocessing(compiler_path, working_dir, whitelist=None, 
     checklist = whitelist[0] if whitelist is not None\
             else glob(pathname=os.path.join(working_dir, "**/*.c"), recursive=True)
     includes = whitelist[1] if whitelist is not None\
-            else glob(pathname=os.path.join(working_dir, "**/*.h"), recursive=True)
+            else glob(pathname=os.path.join(working_dir, "**/*.h"), recursive=True) # may be improved
     arguments = whitelist[2] if whitelist is not None\
             else list()
     arguments = [a for a in arguments if not a.startswith("-o")]
@@ -190,16 +162,8 @@ def evaluate_compiler_preprocessing(compiler_path, working_dir, whitelist=None, 
         head, tail = os.path.split(name)
         if not prev_head == head: # update the information about functions in the dir
             prev_head = head
-            func_splitting = func_defextractor(prev_head).to_dict()
 
-        imm_name = "preprocess_" + tail
-        print(f"Run GCC preprocessor on file {name}")
-
-        subprocess.run([compiler_path, "-E", name] + arguments +
-                        list(set(["-I" + os.path.split(incl_)[0] for incl_ in includes])) +
-                        ["-o", os.path.join(head, imm_name)])
-        print(f"End of {name} preprocessing by gcc")
-        full_path = os.path.join(head, imm_name)
+        full_path = os.path.join(head, name)
         print("FULLPATH", full_path)
         with open(full_path, "r") as f:
             def preprocess_text(f):
@@ -212,25 +176,25 @@ def evaluate_compiler_preprocessing(compiler_path, working_dir, whitelist=None, 
 
                 prepr_text = comment_remover(prepr_text)
                 prepr_src = prepr_text.split("\n")
-                #prepr_src = [x.strip() for x in prepr_src]  # remove leading whitespaces / tabs
+
                 return \
                     (orig_text, \
                     " ".join([x for x in prepr_src if not x.startswith("#")])) # remove directives, join and return
 
             original_text, preprocessed_text = preprocess_text(f)
-            functions_def_info = check_from_text(preprocessed_text)
-            processed_data[full_path] = {'src': original_text,'sign': functions_def_info}
+            func_splitting = func_defextractor(prev_head).to_dict()
+            functions_def_info = [v[1] for _, v in check_from_text(func_splitting).items()]
+            processed_data[full_path] = {'src': original_text, 'sign': functions_def_info}
 
             fc = {substring_after(v, ".c_"): func_splitting['Code'][k]
                   for k, v in func_splitting['Uniq ID'].items()}
 
             for i, item in enumerate(processed_data[full_path]['sign']):
+                print(f"We will process item:{item}")
                 processed_data[full_path]['sign'][i]['code'] = fc[item['name']]
 
             if verbose is True:
                 print(f"Iteration {i} ends.\nGet info of {len(processed_data[full_path]['sign'])} functions")
-            if os.path.exists(full_path):
-                os.remove(full_path)
 
     if verbose is True:
         print("==RESULTS OF DATA PREPROCESSING:==")
