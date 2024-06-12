@@ -54,6 +54,7 @@ python3 emb_collector.py \
 - numpy
 - sklearn
 - argparse
+- mistralai
 
 ### Модифицированные Python-пакеты, используемые как third-party:
 - functiondefextractor 
